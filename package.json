@@ -6,7 +6,8 @@
     "scripts": {
         "start": "node ./dist/index.js",
         "test": "echo \"Error: no test specified\" && exit 1",
-        "postinstall": "tsc"
+        "postinstall": "tsc && cp ./index.html ./dist/index.html",
+        "installAndRun": "tsc && cp ./index.html ./dist/index.html && node ./dist/index.js"
     },
     "author": "Gabriel Csollei <gcsollei@hotmail.com>",
     "license": "ISC",
