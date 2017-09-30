@@ -99,8 +99,9 @@ export class Crawler {
         const body: JQuery = $(content);
         body.find("script").remove();
         const result = new PageData();
-
+        const oldLinksCount = this._queue.length;
         result.links = this.processLinks(body);
+        result.newLinks = this._queue.length - oldLinksCount;
         result.rawText = this.processText(body);
         result.clearedText = this.clearText(result.rawText);
         result.tokens = Tokenizer.tokenize(result.clearedText);
@@ -111,15 +112,16 @@ export class Crawler {
                 this._keyList[undiagriticsElement]++;
             }
             else {
+                result.newTokens++;
                 this._keyList[undiagriticsElement] = 1;
             }
         });
-
+        
         result.wikiTitle = body.find("#firstHeading").text();
         return result;
     }
 
-    private processItem(arg: string|any): Promise<any>{
+    private processItem(arg: string|any): Promise<PageData>{
         console.log("spracovava sa: ", decodeURI(arg));
         return new Promise((success, reject) => {
             
@@ -133,6 +135,7 @@ export class Crawler {
                     }
                     else {
                         wikiData[arg] = this.processHTML(content);
+                        wikiData[arg].url = arg;
                     }
                     
                     success(wikiData[arg]);
@@ -147,7 +150,7 @@ export class Crawler {
             
         })
     }
-    processOneItem(): Promise<any>{
+    processOneItem(): Promise<PageData>{
         if (this._queue.length === 0 ) {
             return null;
         }

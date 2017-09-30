@@ -5,6 +5,7 @@ import * as express from "express";
 const app = express();
 const port = process.env.PORT || 8080;
 const crawler: Crawler = new Crawler();
+crawler.queue("https://sk.wikipedia.org/wiki/Hlavn%C3%A1_str%C3%A1nka");
 
 app.get('/', function (req, res) {
   // res.send('Hello World!')
@@ -17,6 +18,20 @@ app.get("/stats", function(req, res){
         links: crawler.linkSize
     })
 })
+
+app.get("/oneStep", function(req, res){
+    crawler.processOneItem().then(data => {
+        res.send({
+            url: decodeURI(data.url),
+            title: data.wikiTitle,
+            links: data.linksCount,
+            newLinks: data.newLinks,
+            keys: data.tokens.length,
+            newKeys: data.newTokens
+        })
+    }).catch(error => console.error(error));
+})
+
 app.get("/load", function(req, res) {
     crawler.load().then(e => {
         res.send("loaded");
