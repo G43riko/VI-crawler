@@ -3,7 +3,7 @@ import * as http from "http";
 import * as express from "express";
 
 const app = express();
-const port = (process && process.env && process.env.PORT) || 8080;
+const port = process.env.PORT || 8080;
 const crawler: Crawler = new Crawler();
 
 app.get('/', function (req, res) {
