@@ -1,18 +1,22 @@
 import { Tokenizer } from './Tokenizer';
-
+const fs = require('fs');
 import * as request from "request";
 import { PageData } from "./pageData";
 import * as jsdom from "jsdom";
+import { FileManager } from "./FileManager";
+import { Utils } from "./Utils";
 const window = new jsdom.JSDOM().window;
 const document = window.document;
 const $ = require("jquery")(window);
-
+const wikiData = {};
 export class Crawler {
     private _queue:(string|any)[] = [];
     private _maxConnections = 10;
     private _callback = null;
     private _timeGap = 1000;
+    private _countLimit = 400;
     private _runningConnections = 0;
+    private _keyList: any = {};
     constructor(params: any = {}) {
         if (typeof params.maxConnections === "number") {
             this._maxConnections = params.maxConnections
@@ -45,6 +49,7 @@ export class Crawler {
     }
     private processLinks(body: JQuery):{ [s: string]: number }  {
         const links = {};
+        const thisArg = this;
         body.find("a").each(function(){
             const link = $(this).attr("href");
             if(links[link]) {
@@ -69,7 +74,8 @@ export class Crawler {
                                             && !wikiExtraRegex.test(link)
                                             && !wikiHelpRegex.test(link)
                                         ) {
-                    console.log("+link: ", link);
+                    // console.log("+link: ", link);
+                    thisArg._queue.push("https://sk.wikipedia.org" + link);
                 }
                 else {
                     // console.log("-link: ", link);
@@ -91,51 +97,198 @@ export class Crawler {
     }
     private processHTML(content: string): PageData {
         const body: JQuery = $(content);
-        body.find('script').remove();
+        body.find("script").remove();
         const result = new PageData();
 
         result.links = this.processLinks(body);
         result.rawText = this.processText(body);
         result.clearedText = this.clearText(result.rawText);
         result.tokens = Tokenizer.tokenize(result.clearedText);
+
+        result.tokens.forEach(element => {
+            const undiagriticsElement = Utils.removeAccent(element);
+            if(this._keyList[undiagriticsElement]){
+                this._keyList[undiagriticsElement]++;
+            }
+            else {
+                this._keyList[undiagriticsElement] = 1;
+            }
+        });
+
+        result.wikiTitle = body.find("#firstHeading").text();
         return result;
     }
 
     private processItem(arg: string|any): Promise<any>{
+        console.log("spracovava sa: ", decodeURI(arg));
         return new Promise((success, reject) => {
+            
             if (typeof arg === "string") {
-                this.getContentOf(arg).then(content => success(this.processHTML(content))).catch(error => reject(error));
+                this.getContentOf(arg).then(content => {
+                    if (wikiData[arg]) {
+                        console.log("------------------------------------------");
+                        // reject("Stránka " + arg + " už bola spracovaná");
+                        console.log("Stránka " + arg + " už bola spracovaná");
+                        //return;
+                    }
+                    else {
+                        wikiData[arg] = this.processHTML(content);
+                    }
+                    
+                    success(wikiData[arg]);
+                }).catch(error => reject(error));
             }
             else {
                 if(typeof arg.html === "string"){
                     success(this.processHTML(arg.html));
                 }
             }
+
+            
         })
     }
     processOneItem(): Promise<any>{
         if (this._queue.length === 0 ) {
-            return;
+            return null;
         }
         if (this._runningConnections === this._maxConnections) {
-            return;
+            return null;
         }
         const result = this.processItem(this._queue[0])
+        let counter = 0;
+        for(let key in this._keyList) {
+            if(this._keyList.hasOwnProperty(key)){
+                counter++;
+            }
+        }
+        console.log("po pridaní existuje " + this._queue.length + " záznamov (" + counter + " keys)");
         this._queue.splice(0, 1);
         return result;
     }
-    start(): void {
-        if (this._queue.length === 0 ) {
-            return;
+    start(): Promise<string> {
+        return new Promise((success, reject)=> {
+            if (this._queue.length === 0 ) {
+                reject("prázdny zoznam URL");
+            }
+            if (this._runningConnections === this._maxConnections) {
+                reject("maximálny počet pripojení");
+            }
+            
+            let counter = 0;
+            const rec = () => {
+                counter++;
+                console.log("vola sa to " + counter + " krat (" + this.keysSize + " keys)")
+                this.processOneItem().then(data => {
+                    if(counter < this._countLimit) {
+                        setTimeout(() => rec(), this._timeGap);
+                    }
+                    else {
+                        success("úspech");
+                    }
+                }).catch(error => console.log("error: ", error))
+            }
+            rec();
+        })
+        
+    }
+    get linkSize(): number {
+        let counter = 0;
+        for(let key in wikiData) {
+            if(wikiData.hasOwnProperty(key)){
+                counter++;
+            }
         }
-        if (this._runningConnections === this._maxConnections) {
-            return;
+        return counter;
+    }
+    get keysSize(): number {
+        let counter = 0;
+        for(let key in this._keyList) {
+            if(this._keyList.hasOwnProperty(key)){
+                counter++;
+            }
         }
-    }   
+        return counter;
+    }
+    get keysSorted(): any[][] {
+        const result = [];
+
+        for(let key in this._keyList) {
+            if(this._keyList.hasOwnProperty(key)){
+                result.push([key, this._keyList[key]]);
+            }
+        }
+
+        
+
+        result.sort((a, b) => b[1]- a[1]);
+        return result;
+    }
 
     get queueSize(): number {
         return this._queue.length;
     }
 
+    store(): void {
+        const finalString = JSON.stringify({
+            wikiData: wikiData,
+            keyList: this._keyList,
+            queue: this._queue
+        });
+        fs.writeFile("./data.json", finalString, function(err) {
+            if(err) {
+                return console.log(err);
+            }
+        
+            console.log("The file was saved!");
+        }); 
+        /*
+        const fileManager: FileManager = new FileManager(document);
+        fileManager.saveFile("wikiData", finalString);
+        */
+    }
+    load(): Promise<void> {
+        return new Promise((succes, reject) => {
+            fs.readFile('./data.json', 'utf8', (err, data) => {
+                if (err) {
+                    reject(err);
+                }
+                const parsedData = JSON.parse(data);
+                for(const wikiItem in parsedData.wikiData) {
+                    if (parsedData.wikiData.hasOwnProperty(wikiItem)) {
+                        wikiData[wikiItem] = parsedData.wikiData[wikiItem];
+                    }
+                }
+                this._keyList = parsedData.keyList;
+                /*
+                const keyListChanged = [];
+                for(let i in this._keyList) {
+                    const undiagriticsElement = Utils.removeAccent(i);
+                    if (keyListChanged[undiagriticsElement]) {
+                        keyListChanged[undiagriticsElement] += this._keyList[i];
+                    } else {
+                        keyListChanged[undiagriticsElement] = this._keyList[i];
+                    }
+                }
+                this._keyList= keyListChanged;
+                */
+                this._queue = parsedData.queue;
+                succes();
+            });
+        })
+        
+        /*
+        const fileManager: FileManager = new FileManager();
+        fileManager.loadFile(function(data){
+            const parsedData = JSON.parse(data);
+            for(const wikiItem in parsedData.wikiData) {
+                if (parsedData.wikiData.hasOwnProperty(wikiItem)) {
+                    wikiData[wikiItem] = parsedData.wikiData[wikiItem];
+                }
+            }
+            this._keyList = parsedData.wikiData.keyList;
+            this._queue = parsedData.wikiData.queue;
+        })       
+        */ 
+    }
     
 }
