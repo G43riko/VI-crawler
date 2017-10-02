@@ -5,20 +5,22 @@
     "main": "./dist/index.js",
     "scripts": {
         "start": "node ./dist/index.js",
-        "test": "echo \"Error: no test specified\" && exit 1",
         "postinstall": "tsc && cp ./index.html ./dist/index.html",
-        "installAndRun": "tsc && cp ./index.html ./dist/index.html && node ./dist/index.js"
+        "buildAndRun": "tsc && cp ./index.html ./dist/index.html && node ./dist/index.js"
     },
     "author": "Gabriel Csollei <gcsollei@hotmail.com>",
     "license": "ISC",
     "dependencies": {
+        "@types/jquery": "^3.2.12",
         "@types/node": "^8.0.31",
-        "@types/jquery": "^3.2.12",        
         "elasticsearch": "^13.3.1",
         "express": "^4.16.1",
         "jquery": "^3.2.1",
         "jsdom": "^11.2.0",
         "request": "^2.83.0",
         "typescript": "^2.5.3"
+    },
+    "devDependencies": {
+        "nodemon": "^1.12.1"
     }
 }

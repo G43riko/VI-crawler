@@ -1,7 +1,7 @@
 export class Token {
-    key: string;
-    count: number = 1;
-    url: string;
+    public key: string;
+    public count: number = 1;
+    public url: string;
     constructor(key, url = "") {
         this.key = key;
         this.url = url;

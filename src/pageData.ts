@@ -1,20 +1,20 @@
-import { Token } from './Token';
+import { Token } from "./Token";
 
-export class PageData{
-    links: { [s: string]: number } ;
-    rawText: string;
-    wikiTitle: string;
-    clearedText: string;
-    url: string;
-    tokens: any = {};
-    newTokens = 0;
-    newLinks = 0;
+export class PageData {
+    public links: { [s: string]: number } ;
+    public rawText: string;
+    public wikiTitle: string;
+    public clearedText: string;
+    public url: string;
+    public tokens: any = {};
+    public newTokens = 0;
+    public newLinks = 0;
 
     get linksCount(): number {
         let counter = 0;
-        
-        for(let i in this.links){
-            if(this.links.hasOwnProperty(i)){
+
+        for (const i in this.links) {
+            if (this.links.hasOwnProperty(i)) {
                 counter++;
             }
         }
@@ -22,8 +22,8 @@ export class PageData{
     }
     get tokensCount(): number {
         let counter = 0;
-        for(let i in this.tokens){
-            if(this.tokens.hasOwnProperty(i)){
+        for (const i in this.tokens) {
+            if (this.tokens.hasOwnProperty(i)) {
                 counter++;
             }
         }

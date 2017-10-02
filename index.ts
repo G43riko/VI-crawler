@@ -1,102 +1,63 @@
-import { Crawler } from "./src/crawler";
-import * as http from "http";
 import * as express from "express";
+import { Crawler } from "./src/crawler";
+import { ElasticHandler } from "./src/ElasticHandler";
+import { PageData } from "./src/pageData";
+import { ServerHandler } from "./src/ServerHandler";
 
 const app = express();
 const port = process.env.PORT || 8080;
+
+ElasticHandler.ping().then(() => testElastic()).catch((error) => console.log("error"));
+
 const crawler: Crawler = new Crawler();
-crawler.queue("https://sk.wikipedia.org/wiki/Hlavn%C3%A1_str%C3%A1nka");
+// crawler.queue("https://sk.wikipedia.org/wiki/Hlavn%C3%A1_str%C3%A1nka");
 
-app.get('/', function (req, res) {
-  // res.send('Hello World!')
-    res.sendFile("./index.html", { root : __dirname});
-})
-app.get("/stats", function(req, res){
-    res.send({
-        keys: crawler.keysSize,
-        queue: crawler.queueSize,
-        links: crawler.linkSize
-    })
-})
+ServerHandler.setCrawler(crawler);
 
-app.get("/oneStep", function(req, res){
-    crawler.processOneItem().then(data => {
-        res.send({
-            url: decodeURI(data.url),
-            title: data.wikiTitle,
-            links: data.linksCount,
-            newLinks: data.newLinks,
-            keys: data.tokens.length,
-            newKeys: data.newTokens
-        })
-    }).catch(error => console.error(error));
-})
+app.get("/", ServerHandler.sendIndex);
+app.get("/stats", ServerHandler.getStats);
+app.get("/oneStep", ServerHandler.oneStep);
+app.get("/load", ServerHandler.loadFile);
+app.get("/keys", ServerHandler.keys);
 
-app.get("/load", function(req, res) {
-    crawler.load().then(e => {
-        res.send("loaded");
-    }).catch(error => res.send("load error: " + JSON.stringify(res)));
-})
-app.get("/keys", function(req, res) {
-    crawler.load().then(e => {
-        // crawler.start().then(data => crawler.store()).catch(data => console.log("--------"+data));
-        const sordedKeys = crawler.keysSorted;
-        console.log("sortedKeysSize: " + sordedKeys.length);
-        for(let i=0 ; i<10 ; i++){
-            console.log(sordedKeys[i]);
-        }
-    });
+app.listen(port, () => {
+    console.log("Example app listening on port " + port + "!");
+});
 
-    res.send(crawler.keysSorted);
-})
-
-app.listen(port, function () {
-  console.log("Example app listening on port " + port + "!")
-})
-
-
-
-/*
-http.createServer(function (req, res) {
-    function wrapMessage(message) {
-        return `
-            <!doctype html>
-            <html>
-                
-                <head lang="SK">
-                    <meta charset="utf-8">
-                    <title>Crawler</title>
-                    <base href="/">
-                </head>
-                
-                <body class="light">
-                ` + message + `
-                </body>
-            </html>`;
-    }
-    res.writeHead(200, {"Content-Type": "text/html"});
-    let message = "Hello World!"
-    if(!crawler) {
-        crawler = new Crawler();
-        // crawler.queue("https://sk.wikipedia.org/wiki/Hlavn%C3%A1_str%C3%A1nka");
-        crawler.load().then(e => {
-            // crawler.start().then(data => crawler.store()).catch(data => console.log("--------"+data));
-            const sordedKeys = crawler.keysSorted;
-            console.log("sortedKeysSize: " + sordedKeys.length);
-            for(let i=0 ; i<10 ; i++){
-                console.log(sordedKeys[i]);
-            }
-            
+function testElastic() {
+    function processTokens(url: string, tokens: string[]) {
+        tokens.forEach((token) => {
+            ElasticHandler.addTokeData(url, token);
         });
-        
-        
-    }
-    else {
-        message = "Crawler už existujre";
-        res.end(wrapMessage(message));
     }
 
-    
-    
-}).listen(port);
-*/
+    const page1: PageData = new PageData();
+    page1.clearedText = "toto je testovacia stranka 1 a je super";
+    page1.url = "http://wiki.sk/testovacia+stranka1";
+    page1.wikiTitle = "Testovacia stránka 1";
+    page1.tokens = ["toto", "je", "testovacia", "stranka", "1", "a", "je", "super"];
+
+    const page2: PageData = new PageData();
+    page2.clearedText = "toto je druha testovacia stranka a je este viac super";
+    page2.url = "http://wiki.sk/testovacia+stranka2";
+    page2.wikiTitle = "Testovacia stránka 2";
+    page2.tokens = ["toto", "je", "druha", "testovacia", "stranka", "a", "je", "este", "viac", "super"];
+
+    /*
+    ElasticHandler.addPageData(page1).then((data1) => {
+        console.log("data1: ", data1);
+        ElasticHandler.addPageData(page2).then((data2) => {
+            console.log("data2: ", data2);
+        }).catch((error) => console.log("error pri addPage2: ", error));
+    }).catch((error) => console.log("error pri addPage1: ", error));
+    */
+    // processTokens(page1.url, page1.tokens);
+    // processTokens(page2.url, page2.tokens);
+
+    // ElasticHandler.setMapping();
+    /*
+    ElasticHandler.getNumberOfTokens().then((data) => {
+        console.log("data: ", data);
+    }).catch((error) => console.error("error: ", error));
+    */
+}

@@ -1,13 +1,11 @@
-import { Token } from './Token';
-function isIn() {
+import { Token } from "./Token";
 
-}
-export class Tokenizer{
-    static tokenize(data: string): string[] {
+export class Tokenizer {
+    public static tokenize(data: string): string[] {
         const result: string[] = [];
         const splitted = data.split(" ");
-        splitted.forEach(e => {
-            if (e.length === 0 || e === '"') {
+        splitted.forEach((e) => {
+            if (e.length === 0 || e === "\"") {
                 return;
             }
             result.push(e.toLocaleLowerCase());

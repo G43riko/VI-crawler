@@ -1,0 +1,17 @@
+{
+    "defaultSeverity": "error",
+    "extends": [
+        "tslint:recommended"
+    ],
+    "jsRules": {},
+    "rules": {
+        "no-var-requires": false,
+        "variable-name": false,
+        "no-console": false,
+        "object-literal-sort-keys": false,
+        "max-line-length": {
+            "options": [130]
+        }
+    },
+    "rulesDirectory": []
+}

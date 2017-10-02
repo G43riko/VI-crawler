@@ -1,85 +1,117 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <meta http-equiv="X-UA-Compatible" content="ie=edge">
-        <title>Document</title>
-        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
-        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
-        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
-        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
-    </head>
-    <body>
-        <nav class="navbar navbar-inverse navbar-fixed-top">
-            <div class="container-fluid">
-              <div class="navbar-header">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u"
+        crossorigin="anonymous">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp"
+        crossorigin="anonymous">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa"
+        crossorigin="anonymous"></script>
+</head>
+
+<body>
+    <nav class="navbar navbar-inverse navbar-fixed-top">
+        <div class="container-fluid">
+            <div class="navbar-header">
                 <a class="navbar-brand" onclick="getKeys()">WebSiteName</a>
-              </div>
-              <ul class="nav navbar-nav">
+            </div>
+            <ul class="nav navbar-nav">
                 <li onclick="reloadStats()"><a href="#">load stats</a></li>
                 <li onclick="loadFile()"><a href="#">load file</a></li>
                 <li onclick="oneStep()"><a href="#">one step</a></li>
                 <li><a>klúčov: <span id="keys">32</span></a></li>
                 <li><a>v zozname: <span id="queue">32</span></a></li>
                 <li><a>uložených: <span id="links">32</span></a></li>
-              </ul>
-              <form class="navbar-form navbar-left">
+            </ul>
+            <form class="navbar-form navbar-left">
                 <div class="form-group">
-                  <input type="text" class="form-control" placeholder="Search">
+                    <input type="text" class="form-control" placeholder="Search">
                 </div>
                 <button type="submit" class="btn btn-default">Submit</button>
-              </form>
-            </div>
-          </nav>
-          <script>
-              function getKeys(){
-                $.get("./keys", {}, function(data) {
+            </form>
+        </div>
+    </nav>
+    <script>
+        function processMessage(message, callback) {
+            if (message.error) {
+                alert(JSON.stringify(message.error));
+            }
+            else {
+                callback(message.data);
+                
+            }
+        }
+        function getKeys() {
+            $.get("./keys", {}, function (message) {
+                processMessage(message, function(data){
                     console.log("data: ", data);
                 })
-              }
-              function reloadStats() {
-                  $.get("./stats", {}, function(data){
-                       $("#keys").text(data.keys);
-                       $("#queue").text(data.queue);
-                       $("#links").text(data.links);
-                  }, "json")
-              }
-              function loadFile() {
-                  $.get("./load", {}, function(data) {
-                    alert(data);
-                  });
-              }
 
-              function oneStep() {
-                $.get("./oneStep", {}, function(data){
-                  const table = $(`
-                    <tr>
-                        <td class="title"></td>
-                        <td class="url"></td>
-                        <td><span class="newLinks"></span>/<span class="links"></span></td>
-                        <td><span class="newKeys"></span>/<span class="keys"></span></td>
-                    </tr>`);
-                  table.find(".title").text(data.title);
-                  table.find(".url").text(data.url);
-                  table.find(".links").text(data.links);
-                  table.find(".newLinks").text(data.newLinks);
-                  table.find(".keys").text(data.keys);
-                  table.find(".newKeys").text(data.newKeys);
-                  $("#dataWrapper").append(table);
-                }, "json");
-              }
-          </script>
-          <div class="container"  style="margin-top:50px">
-            <h3>Navbar Forms</h3>
-            <table id="dataWrapper" class="table table-striped table-hover">
-              <tr>
+            }, "json")
+        }
+        function setUpStats(keys, queue, links) {
+            $("#keys").text(keys);
+            $("#queue").text(queue);
+            $("#links").text(links);
+        }
+        function reloadStats() {
+            $.get("./stats", {}, function (message) {
+                processMessage(message, function(data){
+                    setUpStats(data.keys, data.queue, data.links)
+                });
+            }, "json")
+        }
+        function loadFile() {
+            $.get("./load", {}, function (processMessage) {
+                processMessage(message, function(data){
+                    alert(data);
+                });
+            });
+        }
+
+        function oneStep() {
+            $.get("./oneStep", {}, function (message) {
+                processMessage(message, function(data){
+                    const table = $(`
+                        <tr>
+                            <td class="title"></td>
+                            <td class="url"></td>
+                            <td><span class="newLinks"></span>/<span class="links"></span></td>
+                            <td><span class="newKeys"></span>/<span class="keys"></span></td>
+                        </tr>`);
+                    table.find(".title").text(data.title);
+                    table.find(".url").text(data.url);
+                    table.find(".links").text(data.links);
+                    table.find(".newLinks").text(data.newLinks);
+                    table.find(".keys").text(data.keys);
+                    table.find(".newKeys").text(data.newKeys);
+
+                    setUpStats(parseInt($("#keys").text()) + data.newKeys,
+                               parseInt($("#queue").text()) + data.newLinks - 1, 
+                               parseInt($("#links").text()) + 1);
+
+                    $("#dataWrapper").append(table);
+                    });
+            }, "json");
+        }
+    </script>
+    <div class="container" style="margin-top:50px">
+        <h3>Navbar Forms</h3>
+        <table id="dataWrapper" class="table table-striped table-hover">
+            <tr>
                 <th>Title</th>
                 <th>Url</th>
                 <th>Links (new/all)</th>
                 <th>Keys (new/all)</th>
-              </tr>
-            </table>
-          </div>
-    </body>
+            </tr>
+        </table>
+    </div>
+</body>
+
 </html>
