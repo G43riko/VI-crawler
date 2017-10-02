@@ -131,8 +131,9 @@ export class Crawler {
             });
         });
     }
-    private processLinks(body: JQuery): {[s: string]: number }  {
+    private processLinks(body: JQuery): any  {
         const links = {};
+        const wikiLinks = [];
         const thisArg = this;
         body.find("a").each(function(){
             const link = $(this).attr("href");
@@ -158,6 +159,7 @@ export class Crawler {
                                             && !wikiHelpRegex.test(link)
                                         ) {
                     // console.log("+link: ", link);
+                    wikiLinks.push("https://sk.wikipedia.org" + link);
                     thisArg._queue.push("https://sk.wikipedia.org" + link);
                 } else {
                     // console.log("-link: ", link);
@@ -166,7 +168,7 @@ export class Crawler {
             }
         });
 
-        return links;
+        return {links, wikiLinks};
     }
     private processText(body: JQuery): string {
         return body.text();
@@ -182,7 +184,9 @@ export class Crawler {
         body.find("script").remove();
         const result = new PageData();
         const oldLinksCount = this._queue.length;
-        result.links = this.processLinks(body);
+        const links = this.processLinks(body);
+        result.links = links.links;
+        result.wikiLinks = links.wikiLinks;
         result.newLinks = this._queue.length - oldLinksCount;
         result.rawText = this.processText(body);
         result.clearedText = this.clearText(result.rawText);

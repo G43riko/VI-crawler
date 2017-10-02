@@ -8,37 +8,26 @@ const client = new elasticsearch.Client({
 const INDEX_KEY = "crawler";
 const TOKEN_KEY = "token";
 const PAGE_KEY = "page";
-
-function updateTokenData(url, token): Promise<any> {
-    return client.update({
-        index: INDEX_KEY,
-        type: TOKEN_KEY,
-        id: token,
-        body: {
-            script: {
-                source: "ctx._source.pages.add(params.url)",
-                lang: "painless",
-                params: { url },
-            },
-        },
-    });
-}
-function createTokenData(url, token): Promise<any> {
-    return client.create({
-        index: INDEX_KEY,
-        type: TOKEN_KEY,
-        id: token,
-        body: {
-            pages: [ url ],
-            created: new Date(),
-        },
-    });
-}
+// const QUEUE_KEY = "queue";
 
 export class ElasticHandler {
     public static ping(): Promise<any> {
         return client.ping({
             requestTimeout: 3000,
+        });
+    }
+
+    public static addToQueue(data: string[]): Promise<any> {
+        const requestBody = [];
+        data.forEach((item) => {
+            requestBody.push({ create:  { _index: INDEX_KEY, _type: PAGE_KEY, _id: item } });
+            requestBody.push({
+                created : 1234,
+                lastVisit: null,
+            });
+        });
+        return client.bulk({
+            body: requestBody,
         });
     }
 
@@ -71,18 +60,67 @@ export class ElasticHandler {
             body: requestBody,
         });
     }
-
-    public static addTokeData(url: string, token: string) {
-        client.exists({
+    public static existToken(token): Promise<boolean> {
+        return client.exists({
             index: INDEX_KEY,
             type: TOKEN_KEY,
             id: token,
-        }, (error, exists) => {
-            if (exists === true) {
-                return updateTokenData(url, token);
-            } else {
-                return createTokenData(url, token);
-            }
+        });
+    }
+    public static existPage(page): Promise<boolean> {
+        return client.exists({
+            index: INDEX_KEY,
+            type: PAGE_KEY,
+            id: page,
+        });
+    }
+    public static addTokesData(url: string, data: string[]): Promise<any> {
+        const requestBody = [];
+        data.forEach((item) => {
+            requestBody.push({ update : {_type : TOKEN_KEY, _index : INDEX_KEY, _id : item}});
+            requestBody.push({
+                script : {
+                    source: "if(!ctx._source.pages.contains(params.url)){ctx._source.pages.add(params.url)}",
+                    params: { url },
+                },
+                upsert: {
+                    pages: [url],
+                    created: new Date(),
+                },
+            });
+        });
+        return client.bulk({
+            body: requestBody,
+        });
+    }
+
+    public static addAllData(data: PageData): Promise<any> {
+        this.addToQueue(data.wikiLinks);
+        return Promise.all([this.addPageData(data), this.addTokesData(data.url, data.tokenArray)]);
+    }
+
+    public static createIndex(): Promise<any> {
+        return client.indices.create({
+            index: INDEX_KEY,
+        });
+    }
+
+    public static addTokeData(url: string, token: string) {
+        client.update({
+            index: INDEX_KEY,
+            type: TOKEN_KEY,
+            id: token,
+            body: {
+                script : {
+                    source: "ctx._source.pages.add(params.url)",
+                    lang: "painless",
+                    params: { url },
+                },
+                upsert: {
+                    pages: [url],
+                    created: new Date(),
+                },
+            },
         });
     }
 
@@ -103,10 +141,10 @@ export class ElasticHandler {
             }).then((data) => succes(data.count)).catch(reject);
         });
     }
-    private static setMapping(): Promise<any> {
+    public static setMapping(): Promise<any> {
         return Promise.all([this.setPageMapping(), this.setTokenMapping()]);
     }
-    private static setTokenMapping(): Promise<any> {
+    public static setTokenMapping(): Promise<any> {
         return client.indices.putMapping({
             index: INDEX_KEY,
             type: TOKEN_KEY,
@@ -122,7 +160,7 @@ export class ElasticHandler {
             },
         });
     }
-    private static setPageMapping(): Promise<any> {
+    public static setPageMapping(): Promise<any> {
         return client.indices.putMapping({
             index: INDEX_KEY,
             type: PAGE_KEY,
