@@ -60,6 +60,7 @@ export class ElasticHandler {
             body: requestBody,
         });
     }
+
     public static existToken(token): Promise<boolean> {
         return client.exists({
             index: INDEX_KEY,
@@ -67,6 +68,7 @@ export class ElasticHandler {
             id: token,
         });
     }
+
     public static existPage(page): Promise<boolean> {
         return client.exists({
             index: INDEX_KEY,
@@ -74,6 +76,7 @@ export class ElasticHandler {
             id: page,
         });
     }
+
     public static addTokesData(url: string, data: string[]): Promise<any> {
         const requestBody = [];
         data.forEach((item) => {
@@ -105,8 +108,14 @@ export class ElasticHandler {
         });
     }
 
-    public static addTokeData(url: string, token: string) {
-        client.update({
+    public static deleteIndex(): Promise<any> {
+        return client.indices.detele({
+            index: INDEX_KEY,
+        });
+    }
+
+    public static addTokenData(url: string, token: string): Promise<any> {
+        return client.update({
             index: INDEX_KEY,
             type: TOKEN_KEY,
             id: token,
@@ -141,9 +150,11 @@ export class ElasticHandler {
             }).then((data) => succes(data.count)).catch(reject);
         });
     }
+
     public static setMapping(): Promise<any> {
         return Promise.all([this.setPageMapping(), this.setTokenMapping()]);
     }
+
     public static setTokenMapping(): Promise<any> {
         return client.indices.putMapping({
             index: INDEX_KEY,
@@ -160,6 +171,7 @@ export class ElasticHandler {
             },
         });
     }
+
     public static setPageMapping(): Promise<any> {
         return client.indices.putMapping({
             index: INDEX_KEY,
